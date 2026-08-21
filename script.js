@@ -34,38 +34,47 @@ const jurisdictionToVariantsDR = {
     "SOCIAL": ["rtp88_SOCIAL", "rtp91_SOCIAL", "rtp93_SOCIAL", "rtp94_SOCIAL", "rtp95_SOCIAL", "rtp96_SOCIAL"]
 };
 
+const SUPPORTED_RTPS = ['88', '91', '93', '94', '95', '96'];
+
+const MIN_BASE_BET_GROUPS = [
+    { variant: "min_base_bet_NOT_APPLICABLE", jurisdictions: ["NOT_APPLICABLE"] },
+    { variant: "min_base_bet_NL", jurisdictions: ["NL"] },
+    { variant: "min_base_bet_Thorne+Realm", jurisdictions: ["NOT_APPLICABLE", "MT", "SE"] },
+    { variant: "min_base_bet_HR", jurisdictions: ["HR"] }
+];
+
 const checkedByDefault = new Set(["NOT_APPLICABLE", "SOCIAL"]);
 const jurisdictionContainer = document.getElementById("jurisdictionContainer");
-jurisdictionContainer.className = "row"; 
+jurisdictionContainer.className = "row";
 
 for (const jur in jurisdictionToVariants) {
     const colDiv = document.createElement("div");
-    colDiv.className = "col-2 mb-2"; 
-  
+    colDiv.className = "col-2 mb-2";
+
     const formCheckDiv = document.createElement("div");
     formCheckDiv.className = "form-check";
-  
+
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.id = `jur_${jur}`;
     checkbox.value = jur;
     checkbox.className = "form-check-input";
-  
+
     if (checkedByDefault.has(jur)) checkbox.checked = true;
-  
+
     const label = document.createElement("label");
     label.htmlFor = checkbox.id;
     label.textContent = jur;
     label.className = "form-check-label";
-  
+
     formCheckDiv.appendChild(checkbox);
     formCheckDiv.appendChild(label);
     colDiv.appendChild(formCheckDiv);
     jurisdictionContainer.appendChild(colDiv);
 }
-  
+
 let originalData = {};
-  
+
 document.getElementById("fileInput").addEventListener("change", function (e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -82,285 +91,163 @@ document.getElementById("fileInput").addEventListener("change", function (e) {
 
     reader.readAsText(file);
 });
-  
-function addGameKL() {
+
+function isJurChecked(jur) {
+    const checkbox = document.getElementById(`jur_${jur}`);
+    return !!checkbox && checkbox.checked;
+}
+
+function readGameName() {
     const gameName = document.getElementById("gameName").value.trim();
-    if (!gameName) return alert("Enter a game name");
-  
-    const paths = {
-        "88": document.getElementById("path88").value.trim(),
-        "91": document.getElementById("path91").value.trim(),
-        "93": document.getElementById("path93").value.trim(),
-        "94": document.getElementById("path94").value.trim(),
-        "95": document.getElementById("path95").value.trim(),
-        "96": document.getElementById("path96").value.trim()
-    };
-  
-    Object.keys(jurisdictionToVariants).forEach(jur => {
-        const checkbox = document.getElementById(`jur_${jur}`);
-        if (!checkbox.checked) return;
-  
-        jurisdictionToVariants[jur].forEach(variant => {
-        if (!originalData[variant]) originalData[variant] = { games: {} };
-        if (!originalData[variant].games[gameName]) {
-            originalData[variant].games[gameName] = { jurisdictions: {} };
-        } else {
-            if (!originalData[variant].games[gameName].jurisdictions) {
-            originalData[variant].games[gameName].jurisdictions = {};
-            }
-        }
+    if (!gameName) {
+        alert("Enter a game name");
+        return null;
+    }
+    if (gameName === "__proto__") {
+        alert('"__proto__" is a reserved name and cannot be used as a gameCode.');
+        return null;
+    }
+    return gameName;
+}
 
-        const isHighVariant = variant.includes("94+");
-
-        if (isHighVariant) {
-            const path94 = paths["94"];
-            const path93 = paths["93"];
-            const path95 = paths["95"];
-        
-            const resolvedPath = path94 === path93 ? path95 : path94;
-            if (!resolvedPath) return;
-        
-            originalData[variant].games[gameName].jurisdictions[jur] = { gameModelFile: resolvedPath };
-        } else {
-            const rtpMatch = variant.match(/(\d{2})/);
-            if (!rtpMatch) return;
-            const rtp = rtpMatch[1];
-            const path = paths[rtp];
-            if (!path) return;
-        
-            originalData[variant].games[gameName].jurisdictions[jur] = { gameModelFile: path };
-        }
-    
-        const sortedGames = {};
-        Object.keys(originalData[variant].games).sort().forEach(key => {
-            sortedGames[key] = originalData[variant].games[key];
-        });
-        
-        originalData[variant].games = sortedGames;
-        });
-
-        if (minBaseBetCheckbox.checked && jur_NOT_APPLICABLE.checked) {
-            const baseBetGroups = {
-                "min_base_bet_NOT_APPLICABLE": ["NOT_APPLICABLE"]
-            };
-    
-            Object.entries(baseBetGroups).forEach(([variant, jurisdictions]) => {
-                if (!originalData[variant]) originalData[variant] = { games: {} };
-                if (!originalData[variant].games[gameName]) {
-                    originalData[variant].games[gameName] = { jurisdictions: {} };
-                } else if (!originalData[variant].games[gameName].jurisdictions) {
-                    originalData[variant].games[gameName].jurisdictions = {};
-                }
-    
-                jurisdictions.forEach(jur => {
-                    const checkbox = document.getElementById(`jur_${jur}`);
-                    if (!checkbox || !checkbox.checked) return;
-    
-                    originalData[variant].games[gameName].jurisdictions[jur] = {
-                        defaultBaseBet: {
-                            value: Number(document.getElementById('minBaseBetValue').value.trim())
-                        }
-                    };
-                });
-    
-                const sortedGames = {};
-                Object.keys(originalData[variant].games).sort().forEach(key => {
-                    sortedGames[key] = originalData[variant].games[key];
-                });
-                originalData[variant].games = sortedGames;
-            });
-        }
-        if (minBaseBetCheckbox.checked && jur_NL.checked) {
-            const baseBetGroups = {
-                "min_base_bet_NL": ["NL"]
-            };
-    
-            Object.entries(baseBetGroups).forEach(([variant, jurisdictions]) => {
-                if (!originalData[variant]) originalData[variant] = { games: {} };
-                if (!originalData[variant].games[gameName]) {
-                    originalData[variant].games[gameName] = { jurisdictions: {} };
-                } else if (!originalData[variant].games[gameName].jurisdictions) {
-                    originalData[variant].games[gameName].jurisdictions = {};
-                }
-    
-                jurisdictions.forEach(jur => {
-                    const checkbox = document.getElementById(`jur_${jur}`);
-                    if (!checkbox || !checkbox.checked) return;
-    
-                    originalData[variant].games[gameName].jurisdictions[jur] = {
-                        defaultBaseBet: {
-                            value: Number(document.getElementById('minBaseBetValue').value.trim())
-                        }
-                    };
-                });
-    
-                const sortedGames = {};
-                Object.keys(originalData[variant].games).sort().forEach(key => {
-                    sortedGames[key] = originalData[variant].games[key];
-                });
-                originalData[variant].games = sortedGames;
-            });
-        }
-        if (minBaseBetCheckbox.checked && jur_NOT_APPLICABLE.checked && jur_MT.checked && jur_SE.checked) {
-            const baseBetGroups = {
-                "min_base_bet_Thorne+Realm": ["NOT_APPLICABLE", "MT", "SE"]
-            };
-    
-            Object.entries(baseBetGroups).forEach(([variant, jurisdictions]) => {
-                if (!originalData[variant]) originalData[variant] = { games: {} };
-                if (!originalData[variant].games[gameName]) {
-                    originalData[variant].games[gameName] = { jurisdictions: {} };
-                } else if (!originalData[variant].games[gameName].jurisdictions) {
-                    originalData[variant].games[gameName].jurisdictions = {};
-                }
-    
-                jurisdictions.forEach(jur => {
-                    const checkbox = document.getElementById(`jur_${jur}`);
-                    if (!checkbox || !checkbox.checked) return;
-    
-                    originalData[variant].games[gameName].jurisdictions[jur] = {
-                        defaultBaseBet: {
-                            value: Number(document.getElementById('minBaseBetValue').value.trim())
-                        }
-                    };
-                });
-    
-                const sortedGames = {};
-                Object.keys(originalData[variant].games).sort().forEach(key => {
-                    sortedGames[key] = originalData[variant].games[key];
-                });
-                originalData[variant].games = sortedGames;
-            });
-        }
-        if (minBaseBetCheckbox.checked && jur_HR.checked) {
-            const baseBetGroups = {
-                "min_base_bet_HR": ["HR"]
-            };
-    
-            Object.entries(baseBetGroups).forEach(([variant, jurisdictions]) => {
-                if (!originalData[variant]) originalData[variant] = { games: {} };
-                if (!originalData[variant].games[gameName]) {
-                    originalData[variant].games[gameName] = { jurisdictions: {} };
-                } else if (!originalData[variant].games[gameName].jurisdictions) {
-                    originalData[variant].games[gameName].jurisdictions = {};
-                }
-    
-                jurisdictions.forEach(jur => {
-                    const checkbox = document.getElementById(`jur_${jur}`);
-                    if (!checkbox || !checkbox.checked) return;
-    
-                    originalData[variant].games[gameName].jurisdictions[jur] = {
-                        defaultBaseBet: {
-                            value: Number(document.getElementById('minBaseBetValue').value.trim())
-                        }
-                    };
-                });
-    
-                const sortedGames = {};
-                Object.keys(originalData[variant].games).sort().forEach(key => {
-                    sortedGames[key] = originalData[variant].games[key];
-                });
-                originalData[variant].games = sortedGames;
-            });
-        }
-
+function buildPathsFromInputs() {
+    const paths = {};
+    SUPPORTED_RTPS.forEach(rtp => {
+        paths[rtp] = document.getElementById(`path${rtp}`).value.trim();
     });
-  
+    return paths;
+}
+
+function getRtpFromVariant(variant) {
+    const match = variant.match(/(\d{2})/);
+    return match ? match[1] : null;
+}
+
+function ensureGameEntry(variant, gameName) {
+    if (!originalData[variant]) originalData[variant] = { games: {} };
+    if (!originalData[variant].games[gameName]) {
+        originalData[variant].games[gameName] = { jurisdictions: {} };
+    } else if (!originalData[variant].games[gameName].jurisdictions) {
+        originalData[variant].games[gameName].jurisdictions = {};
+    }
+    return originalData[variant].games[gameName];
+}
+
+function sortGamesByName(variantData) {
+    const sortedGames = {};
+    Object.keys(variantData.games).sort().forEach(key => {
+        sortedGames[key] = variantData.games[key];
+    });
+    variantData.games = sortedGames;
+}
+
+function applyMinBaseBetGroups(gameName) {
+    if (!document.getElementById('minBaseBetCheckbox').checked) return;
+
+    const rawValue = document.getElementById('minBaseBetValue').value.trim();
+    if (!/^-?\d+(\.\d+)?$/.test(rawValue)) {
+        alert("Min base bet value must be a number.");
+        return;
+    }
+    const value = Number(rawValue);
+
+    MIN_BASE_BET_GROUPS.forEach(({ variant, jurisdictions }) => {
+        if (!jurisdictions.every(isJurChecked)) return;
+
+        const gameEntry = ensureGameEntry(variant, gameName);
+        jurisdictions.forEach(jur => {
+            gameEntry.jurisdictions[jur] = { defaultBaseBet: { value } };
+        });
+        sortGamesByName(originalData[variant]);
+    });
+}
+
+function getBaseBetVariantsForJur(jur) {
+    return MIN_BASE_BET_GROUPS
+        .filter(group => group.jurisdictions.includes(jur))
+        .map(group => group.variant);
+}
+
+function addGameForJurisdictionMap(jurisdictionMap, gameName, paths) {
+    let addedAnything = false;
+
+    Object.keys(jurisdictionMap).forEach(jur => {
+        if (!isJurChecked(jur)) return;
+
+        jurisdictionMap[jur].forEach(variant => {
+            const rtp = getRtpFromVariant(variant);
+            const path = rtp ? paths[rtp] : null;
+            if (!path) return;
+
+            const gameEntry = ensureGameEntry(variant, gameName);
+            gameEntry.jurisdictions[jur] = { gameModelFile: path };
+            sortGamesByName(originalData[variant]);
+            addedAnything = true;
+        });
+    });
+
+    return addedAnything;
+}
+
+function writeOutputAndWarnIfEmpty(addedAnything) {
+    if (!addedAnything) {
+        alert("Nie dodano żadnego wpisu — sprawdź czy zaznaczono jurysdykcje i podano ścieżki.");
+    }
     document.getElementById("output").value = JSON.stringify(originalData, null, 2);
+}
+
+function addGameKL() {
+    const gameName = readGameName();
+    if (!gameName) return;
+
+    const paths = buildPathsFromInputs();
+    let addedAnything = false;
+
+    Object.keys(jurisdictionToVariants).forEach(jur => {
+        if (!isJurChecked(jur)) return;
+
+        jurisdictionToVariants[jur].forEach(variant => {
+            const isHighVariant = variant.includes("94+");
+            let resolvedPath;
+
+            if (isHighVariant) {
+                resolvedPath = paths["94"] === paths["93"] ? paths["95"] : paths["94"];
+            } else {
+                const rtp = getRtpFromVariant(variant);
+                resolvedPath = rtp ? paths[rtp] : null;
+            }
+            if (!resolvedPath) return;
+
+            const gameEntry = ensureGameEntry(variant, gameName);
+            gameEntry.jurisdictions[jur] = { gameModelFile: resolvedPath };
+            sortGamesByName(originalData[variant]);
+            addedAnything = true;
+        });
+    });
+
+    applyMinBaseBetGroups(gameName);
+
+    writeOutputAndWarnIfEmpty(addedAnything);
 }
 
 function addGameFD() {
-    const gameName = document.getElementById("gameName").value.trim();
-    if (!gameName) return alert("Enter a game name");
-  
-    const paths = {
-        "88": document.getElementById("path88").value.trim(),
-        "91": document.getElementById("path91").value.trim(),
-        "93": document.getElementById("path93").value.trim(),
-        "94": document.getElementById("path94").value.trim(),
-        "95": document.getElementById("path95").value.trim(),
-        "96": document.getElementById("path96").value.trim()
-    };
-  
-    Object.keys(jurisdictionToVariantsFD).forEach(jur => {
-        const checkbox = document.getElementById(`jur_${jur}`);
-        if (!checkbox.checked) return;
-  
-        jurisdictionToVariantsFD[jur].forEach(variant => {
-        if (!originalData[variant]) originalData[variant] = { games: {} };
-        if (!originalData[variant].games[gameName]) {
-            originalData[variant].games[gameName] = { jurisdictions: {} };
-        } else {
-            if (!originalData[variant].games[gameName].jurisdictions) {
-            originalData[variant].games[gameName].jurisdictions = {};
-            }
-        }
-  
-        const rtpMatch = variant.match(/(\d{2})/);
-        if (!rtpMatch) return;
-        const rtp = rtpMatch[1];
-        const path = paths[rtp];
-        if (!path) return;
-  
-        originalData[variant].games[gameName].jurisdictions[jur] = { gameModelFile: path };
+    const gameName = readGameName();
+    if (!gameName) return;
 
-        const sortedGames = {};
-        Object.keys(originalData[variant].games).sort().forEach(key => {
-            sortedGames[key] = originalData[variant].games[key];
-        });
-        
-        originalData[variant].games = sortedGames;
-        });
-    });
-  
-    document.getElementById("output").value = JSON.stringify(originalData, null, 2);
+    const paths = buildPathsFromInputs();
+    const addedAnything = addGameForJurisdictionMap(jurisdictionToVariantsFD, gameName, paths);
+
+    writeOutputAndWarnIfEmpty(addedAnything);
 }
 
 function addGameDR() {
-    const gameName = document.getElementById("gameName").value.trim();
-    if (!gameName) return alert("Enter a game name");
-  
-    const paths = {
-        "88": document.getElementById("path88").value.trim(),
-        "91": document.getElementById("path91").value.trim(),
-        "93": document.getElementById("path93").value.trim(),
-        "94": document.getElementById("path94").value.trim(),
-        "95": document.getElementById("path95").value.trim(),
-        "96": document.getElementById("path96").value.trim()
-    };
-  
-    Object.keys(jurisdictionToVariantsDR).forEach(jur => {
-        const checkbox = document.getElementById(`jur_${jur}`);
-        if (!checkbox.checked) return;
-  
-        jurisdictionToVariantsDR[jur].forEach(variant => {
-        if (!originalData[variant]) originalData[variant] = { games: {} };
-        if (!originalData[variant].games[gameName]) {
-            originalData[variant].games[gameName] = { jurisdictions: {} };
-        } else {
-            if (!originalData[variant].games[gameName].jurisdictions) {
-            originalData[variant].games[gameName].jurisdictions = {};
-            }
-        }
-  
-        const rtpMatch = variant.match(/(\d{2})/);
-        if (!rtpMatch) return;
-        const rtp = rtpMatch[1];
-        const path = paths[rtp];
-        if (!path) return;
-  
-        originalData[variant].games[gameName].jurisdictions[jur] = { gameModelFile: path };
+    const gameName = readGameName();
+    if (!gameName) return;
 
-        const sortedGames = {};
-        Object.keys(originalData[variant].games).sort().forEach(key => {
-            sortedGames[key] = originalData[variant].games[key];
-        });
-        
-        originalData[variant].games = sortedGames;
-        });
-    });
-  
-    document.getElementById("output").value = JSON.stringify(originalData, null, 2);
+    const paths = buildPathsFromInputs();
+    const addedAnything = addGameForJurisdictionMap(jurisdictionToVariantsDR, gameName, paths);
+
+    writeOutputAndWarnIfEmpty(addedAnything);
 }
 
 function copyOutput() {
@@ -383,12 +270,16 @@ function autofillPaths() {
         return;
     }
 
-    const prefix = match[1]; 
-    const suffix = match[3]; 
+    const [, prefix, rtpInSample, suffix] = match;
 
-    const rtpVariants = ['88', '91', '93', '94', '95', '96'];
+    if (!SUPPORTED_RTPS.includes(rtpInSample)) {
+        const proceed = confirm(
+            `Numer "${rtpInSample}" w podanej ścieżce nie jest znanym RTP-em (${SUPPORTED_RTPS.join('/')}).\nKontynuować autofill mimo to?`
+        );
+        if (!proceed) return;
+    }
 
-    rtpVariants.forEach(rtp => {
+    SUPPORTED_RTPS.forEach(rtp => {
         const inputEl = document.getElementById('path' + rtp);
         if (inputEl) {
             inputEl.value = prefix + rtp + suffix;
@@ -397,16 +288,14 @@ function autofillPaths() {
 }
 
 function removeGame() {
-    const gameName = document.getElementById("gameName").value.trim();
-    if (!gameName) return alert("Enter a game name");
+    const gameName = readGameName();
+    if (!gameName) return;
 
     let removedAnything = false;
 
     Object.keys(jurisdictionToVariants).forEach(jur => {
-        const checkbox = document.getElementById(`jur_${jur}`);
-        if (!checkbox.checked) return;
+        if (!isJurChecked(jur)) return;
 
-        // usuwanie z głównych wariantów rtp
         jurisdictionToVariants[jur].forEach(variant => {
             const variantData = originalData[variant];
             if (!variantData || !variantData.games || !variantData.games[gameName]) return;
@@ -417,13 +306,11 @@ function removeGame() {
                 removedAnything = true;
             }
 
-            // jeśli nie zostały żadne jurysdykcje - usuń całą grę z tego wariantu
             if (jurisdictions && Object.keys(jurisdictions).length === 0) {
                 delete variantData.games[gameName];
             }
         });
 
-        // usuwanie z grup min_base_bet
         removeBaseBetForJur(jur, gameName);
     });
 
@@ -435,18 +322,7 @@ function removeGame() {
 }
 
 function removeBaseBetForJur(jur, gameName) {
-    const baseBetVariantsMap = {
-        "NOT_APPLICABLE": ["min_base_bet_NOT_APPLICABLE", "min_base_bet_Thorne+Realm"],
-        "NL": ["min_base_bet_NL"],
-        "MT": ["min_base_bet_Thorne+Realm"],
-        "SE": ["min_base_bet_Thorne+Realm"],
-        "HR": ["min_base_bet_HR"]
-    };
-
-    const variants = baseBetVariantsMap[jur];
-    if (!variants) return;
-
-    variants.forEach(variant => {
+    getBaseBetVariantsForJur(jur).forEach(variant => {
         const variantData = originalData[variant];
         if (!variantData || !variantData.games || !variantData.games[gameName]) return;
 
