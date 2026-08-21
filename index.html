@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>games_templates.json Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Support tools</h1>
+        <button class="btn btn-secondary mt-3" onclick="location.href='scrapping.html'">Generate JSON with currencies tool</button>
+        <hr>
+        <div class="mb-3">
+            <label for="fileInput" class="form-label">Upload existing JSON file:</label>
+            <input type="file" id="fileInput" class="form-control" accept=".json">
+        </div>
+
+        <hr>
+
+        <div class="mb-3">
+            <label for="gameName" class="form-label">New gameCode:</label>
+            <input type="text" id="gameName" class="form-control" placeholder="Enter new gameCode (e.g, mangoexpress7s)">
+        </div>
+
+        <h3>Set paths for RTP variants:</h3>
+        <p>In case the game <b>has all RTP variants</b>, you can paste the default math for this game and click the "Autofill" button.<br> Nevertheless, please be careful and <b>every time do a double-check</b>.<br> Otherwise you might add the wrong gameModelFiles!</p>
+        <div class="mb-3 d-flex gap-2">
+            <input type="text" id="samplepath" class="form-control" placeholder="default path">
+            <button class="btn btn-outline-primary" onclick="autofillPaths()">Autofill</button>
+        </div>
+        <div class="mb-3">
+            <label>88: <input type="text" id="path88" class="form-control" placeholder="path for RTP 88"></label>
+            <label>91: <input type="text" id="path91" class="form-control" placeholder="path for RTP 91"></label>
+            <label>93: <input type="text" id="path93" class="form-control" placeholder="path for RTP 93"></label>
+            <label>94: <input type="text" id="path94" class="form-control" placeholder="path for RTP 94"></label>
+            <label>95: <input type="text" id="path95" class="form-control" placeholder="path for RTP 95"></label>
+            <label>96: <input type="text" id="path96" class="form-control" placeholder="path for RTP 96"></label>
+        </div>
+
+        <h3>Select Jurisdictions:</h3>
+        <div id="jurisdictionContainer"></div>
+        <hr>
+        <div class="mb-3">
+            <div class="mb-3">
+                <input class="form-check-input" type="checkbox" id="minBaseBetCheckbox">
+                <label class="form-check-label ms-2" for="minBaseBetCheckbox">Click, if you want to add min base bet templates <i>*Recommend, if the game has more than 1 base bet level</i></label>
+            </div>
+            <div class="mb-3">
+                <label><input type="text" id="minBaseBetValue" class="form-control" placeholder="Min base bet value"></label>
+            </div>
+        </div>
+        <button class="btn btn-primary mt-3" onclick="addGameKL()">Add Game for KL</button>
+        <button class="btn btn-primary mt-3" onclick="addGameFD()">Add Game for FD</button>
+        <button class="btn btn-primary mt-3" onclick="addGameDR()">Add Game for DR</button>
+        <button class="btn btn-danger mt-3" onclick="removeGame()">Usuń grę</button>
+        
+        <h3 class="mt-4">Updated JSON output:</h3>
+        <div class="mb-3">
+            <button class="btn btn-primary mb-2" onclick="copyOutput()">Copy</button>
+            <textarea id="output" class="form-control" rows="15" readonly></textarea>
+          </div>
+          
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+    <script src="script.js" defer></script>
+</body>
+</html>
