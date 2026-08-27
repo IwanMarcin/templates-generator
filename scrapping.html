@@ -42,11 +42,11 @@
     <h1>Crypto-currencies updater</h1>
     <button class="btn btn-secondary mt-3" onclick="location.href='index.html'">Adding game into JSON tool</button>
     <hr>
-    <h2>Previous Rates (Paste here):</h2>
-    <textarea id="previousInput" placeholder="Wklej poprzedni JSON..."></textarea>
+    <h2>Wklej tutaj cały plik currencies.json:</h2>
+    <textarea id="previousInput" placeholder="Wklej cały plik currencies.json (z kluczem &quot;currencies&quot;)..."></textarea>
     <br>
     <button id="updateBtn">UPDATE</button>
-    <pre id="output">Data loading...</pre>
+    <pre id="output">Wklej plik i kliknij UPDATE.</pre>
 
   <script>
     const template = {
@@ -75,7 +75,11 @@
       "TON": { precision: 2, againstEurRate: 0 },
       "FTN": { precision: 2, againstEurRate: 0 },
       "DOT": { precision: 4, againstEurRate: 0 },
-      "SOL": { precision: 4, againstEurRate: 0 }
+      "SOL": { precision: 4, againstEurRate: 0 },
+      "PPC": { precision: 4, againstEurRate: 0 },
+      "VNDC": { precision: 2, againstEurRate: 0 },
+      "VSYS": { precision: 2, againstEurRate: 0 },
+      "DAI": { precision: 2, againstEurRate: 0 }
     };
 
     const idToSymbol = {
@@ -97,13 +101,61 @@
       "the-open-network": "TON",
       fasttoken: "FTN",
       polkadot: "DOT",
-      solana: "SOL"
+      solana: "SOL",
+      peercoin: "PPC",
+      vndc: "VNDC",
+      "v-systems": "VSYS",
+      dai: "DAI"
     };
 
-    const url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin,tron,dogecoin,ripple,bitcoin-cash,binancecoin,cardano,usd-coin,tether,binance-usd,eos,dash,stellar,the-open-network,fasttoken,polkadot,solana&vs_currencies=eur";
+    const url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin,tron,dogecoin,ripple,bitcoin-cash,binancecoin,cardano,usd-coin,tether,binance-usd,eos,dash,stellar,the-open-network,fasttoken,polkadot,solana,peercoin,vndc,v-systems,dai&vs_currencies=eur";
+
+    function applyRate(fullData, symbol, rawRate) {
+      if (!template[symbol]) return;
+
+      const existing = fullData.currencies[symbol];
+      const precision = existing ? existing.precision : template[symbol].precision;
+      const newRate = parseFloat(rawRate.toFixed(precision));
+
+      if (existing) {
+        const previousRate = existing.againstEurRate;
+        if (previousRate) {
+          const change = 100 * (newRate - previousRate) / previousRate;
+          if (change > 10) {
+            alert(`🔼 ${symbol} increased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
+          }
+          if (change < -10) {
+            alert(`🔽 ${symbol} decreased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
+          }
+        }
+        existing.againstEurRate = newRate;
+      } else {
+        fullData.currencies[symbol] = { precision, againstEurRate: newRate };
+      }
+    }
 
     async function updateRates() {
       const output = document.getElementById("output");
+      const rawInput = document.getElementById("previousInput").value.trim();
+
+      if (!rawInput) {
+        output.textContent = "Wklej plik i kliknij UPDATE.";
+        return;
+      }
+
+      let fullData;
+      try {
+        fullData = JSON.parse(rawInput);
+      } catch (e) {
+        output.textContent = "❌ Wklejony tekst nie jest poprawnym JSON-em: " + e.message;
+        return;
+      }
+
+      if (!fullData.currencies) {
+        output.textContent = "❌ Wklejony JSON nie zawiera klucza \"currencies\" - wklej cały plik currencies.json.";
+        return;
+      }
+
       try {
         const res = await fetch(url);
         const data = await res.json();
@@ -113,46 +165,19 @@
           if (!base || !eur || eur === 0) continue;
 
           const inverse = 1 / eur;
-
-          if (template[base]) {
-            template[base].againstEurRate = parseFloat(inverse.toFixed(template[base].precision));
-          }
-          if (template["m" + base]) {
-            template["m" + base].againstEurRate = parseFloat((inverse * 1000).toFixed(template["m" + base].precision));
-          }
-          if (template["u" + base]) {
-            template["u" + base].againstEurRate = parseFloat((inverse * 1000000).toFixed(template["u" + base].precision));
-          }
+          applyRate(fullData, base, inverse);
+          applyRate(fullData, "m" + base, inverse * 1000);
+          applyRate(fullData, "u" + base, inverse * 1000000);
         }
 
-        let previousInput = document.getElementById("previousInput").value;
-        previousInput = previousInput.trim();
-        if (previousInput && !previousInput.startsWith("{")) {
-            previousInput = "{" + previousInput + "}";
-        }
-        if (previousInput){
-            const previousData = JSON.parse(previousInput);
-            for (const [key, value] of Object.entries(previousData)) {
-                if (template[key]) {
-                    const previousRate = value.againstEurRate;
-                    const currentRate = template[key].againstEurRate;
-                    if (100 * (currentRate - previousRate) / previousRate > 10) {
-                        alert(`🔼 ${key} increased by  ${(100 * (currentRate - previousRate) / previousRate).toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${currentRate}`);
-                    }
-                    if (100 * (currentRate - previousRate) / previousRate < -10) {
-                        alert(`🔽 ${key} decreased by ${(100 * (currentRate - previousRate) / previousRate).toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${currentRate}`);
-                    }
-                }
-            }
-        }
-        output.textContent = JSON.stringify(template, null, 2);
+        output.textContent = JSON.stringify(fullData, null, 2);
       } catch (e) {
         output.textContent = "❌ Error during data download: " + e.message;
       }
     }
 
     document.getElementById("updateBtn").addEventListener("click", updateRates);
-    updateRates(); // auto-start
+    updateRates(); // shows the "paste the file" hint on load
   </script>
 
 </body>
