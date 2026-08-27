@@ -110,28 +110,51 @@
 
     const url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin,tron,dogecoin,ripple,bitcoin-cash,binancecoin,cardano,usd-coin,tether,binance-usd,eos,dash,stellar,the-open-network,fasttoken,polkadot,solana,peercoin,vndc,v-systems,dai&vs_currencies=eur";
 
-    function applyRate(fullData, symbol, rawRate) {
-      if (!template[symbol]) return;
+    function findEntry(text, symbol) {
+      const regex = new RegExp(`"${symbol}"\\s*:\\s*\\{([^{}]*)\\}`);
+      return regex.exec(text);
+    }
 
-      const existing = fullData.currencies[symbol];
-      const precision = existing ? existing.precision : template[symbol].precision;
-      const newRate = parseFloat(rawRate.toFixed(precision));
+    function applyRateInText(text, symbol, rawRate) {
+      if (!template[symbol]) return text;
 
-      if (existing) {
-        const previousRate = existing.againstEurRate;
-        if (previousRate) {
-          const change = 100 * (newRate - previousRate) / previousRate;
-          if (change > 10) {
-            alert(`🔼 ${symbol} increased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
-          }
-          if (change < -10) {
-            alert(`🔽 ${symbol} decreased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
-          }
-        }
-        existing.againstEurRate = newRate;
-      } else {
-        fullData.currencies[symbol] = { precision, againstEurRate: newRate };
+      const entryMatch = findEntry(text, symbol);
+
+      if (!entryMatch) {
+        const anchor = /"currencies"\s*:\s*\{/.exec(text);
+        if (!anchor) return text;
+        const precision = template[symbol].precision;
+        const newRate = rawRate.toFixed(precision);
+        const insertion = `\n    "${symbol}": {\n      "precision": ${precision},\n      "againstEurRate": ${newRate}\n    },`;
+        const insertPos = anchor.index + anchor[0].length;
+        return text.slice(0, insertPos) + insertion + text.slice(insertPos);
       }
+
+      const body = entryMatch[1];
+      const precisionMatch = /"precision"\s*:\s*(-?\d+)/.exec(body);
+      const rateMatch = /"againstEurRate"\s*:\s*([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)/.exec(body);
+      if (!rateMatch) return text;
+
+      const precision = precisionMatch ? parseInt(precisionMatch[1], 10) : template[symbol].precision;
+      const previousRate = parseFloat(rateMatch[1]);
+      const newRate = rawRate.toFixed(precision);
+
+      if (previousRate) {
+        const change = 100 * (parseFloat(newRate) - previousRate) / previousRate;
+        if (change > 10) {
+          alert(`🔼 ${symbol} increased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
+        }
+        if (change < -10) {
+          alert(`🔽 ${symbol} decreased by ${change.toFixed(2)}%\nOld value: ${previousRate}\nNew value: ${newRate}`);
+        }
+      }
+
+      const newBody = body.slice(0, rateMatch.index)
+        + rateMatch[0].replace(rateMatch[1], newRate)
+        + body.slice(rateMatch.index + rateMatch[0].length);
+      const newEntry = entryMatch[0].replace(body, newBody);
+
+      return text.slice(0, entryMatch.index) + newEntry + text.slice(entryMatch.index + entryMatch[0].length);
     }
 
     async function updateRates() {
@@ -143,16 +166,14 @@
         return;
       }
 
-      let fullData;
       try {
-        fullData = JSON.parse(rawInput);
+        const parsed = JSON.parse(rawInput);
+        if (!parsed.currencies) {
+          output.textContent = "❌ Wklejony JSON nie zawiera klucza \"currencies\" - wklej cały plik currencies.json.";
+          return;
+        }
       } catch (e) {
         output.textContent = "❌ Wklejony tekst nie jest poprawnym JSON-em: " + e.message;
-        return;
-      }
-
-      if (!fullData.currencies) {
-        output.textContent = "❌ Wklejony JSON nie zawiera klucza \"currencies\" - wklej cały plik currencies.json.";
         return;
       }
 
@@ -160,17 +181,18 @@
         const res = await fetch(url);
         const data = await res.json();
 
+        let text = rawInput;
         for (const [id, { eur }] of Object.entries(data)) {
           const base = idToSymbol[id];
           if (!base || !eur || eur === 0) continue;
 
           const inverse = 1 / eur;
-          applyRate(fullData, base, inverse);
-          applyRate(fullData, "m" + base, inverse * 1000);
-          applyRate(fullData, "u" + base, inverse * 1000000);
+          text = applyRateInText(text, base, inverse);
+          text = applyRateInText(text, "m" + base, inverse * 1000);
+          text = applyRateInText(text, "u" + base, inverse * 1000000);
         }
 
-        output.textContent = JSON.stringify(fullData, null, 2);
+        output.textContent = text;
       } catch (e) {
         output.textContent = "❌ Error during data download: " + e.message;
       }
