@@ -15,7 +15,6 @@ const jurisdictionToVariants = {
     "HR": ["rtp88_HR", "rtp91_HR", "rtp93_HR", "rtp94_HR", "rtp95_HR", "rtp96_HR"],
     "BG": ["rtp88_BG", "rtp91_BG", "rtp93_BG", "rtp94_BG", "rtp95_BG", "rtp96_BG"],
     "SE": ["rtp88_SE", "rtp91_SE", "rtp93_SE", "rtp94_SE", "rtp95_SE", "rtp96_SE"],
-    "UK": ["rtp88_UK", "rtp91_UK", "rtp93_UK", "rtp94_UK", "rtp95_UK"],
     "SK": ["rtp88_SK", "rtp91_SK", "rtp93_SK", "rtp94_SK", "rtp95_SK", "rtp96_SK"],
     "DK": ["rtp88_DK", "rtp91_DK", "rtp93_DK", "rtp94_DK", "rtp95_DK", "rtp96_DK"],
     "GR": ["rtp88_GR", "rtp91_GR", "rtp93_GR", "rtp94_GR", "rtp95_GR", "rtp96_GR"],
@@ -40,7 +39,8 @@ const MIN_BASE_BET_GROUPS = [
     { variant: "min_base_bet_NOT_APPLICABLE", jurisdictions: ["NOT_APPLICABLE"] },
     { variant: "min_base_bet_NL", jurisdictions: ["NL"] },
     { variant: "min_base_bet_Thorne+Realm", jurisdictions: ["NOT_APPLICABLE", "MT", "SE"] },
-    { variant: "min_base_bet_HR", jurisdictions: ["HR"] }
+    { variant: "min_base_bet_HR", jurisdictions: ["HR"] },
+    { variant: "min_base_bet_ES", jurisdictions: ["ES"] }
 ];
 
 const checkedByDefault = new Set(["NOT_APPLICABLE", "SOCIAL"]);
@@ -142,14 +142,16 @@ function sortGamesByName(variantData) {
 }
 
 function applyMinBaseBetGroups(gameName) {
-    if (!document.getElementById('minBaseBetCheckbox').checked) return;
+    if (!document.getElementById('minBaseBetCheckbox').checked) return false;
 
     const rawValue = document.getElementById('minBaseBetValue').value.trim();
     if (!/^-?\d+(\.\d+)?$/.test(rawValue)) {
         alert("Min base bet value must be a number.");
-        return;
+        return false;
     }
     const value = Number(rawValue);
+
+    let addedAnything = false;
 
     MIN_BASE_BET_GROUPS.forEach(({ variant, jurisdictions }) => {
         if (!jurisdictions.every(isJurChecked)) return;
@@ -159,7 +161,28 @@ function applyMinBaseBetGroups(gameName) {
             gameEntry.jurisdictions[jur] = { defaultBaseBet: { value } };
         });
         sortGamesByName(originalData[variant]);
+        addedAnything = true;
     });
+
+    return addedAnything;
+}
+
+function applyMaxBetCoincidingWinES(gameName) {
+    if (!document.getElementById('maxBetCoincidingWinESCheckbox').checked) return false;
+    if (!isJurChecked('ES')) return false;
+
+    const rawValue = document.getElementById('maxBetCoincidingWinESValue').value.trim();
+    if (!/^-?\d+(\.\d+)?$/.test(rawValue)) {
+        alert("Max bet CoincidingWin ES value must be a number.");
+        return false;
+    }
+    const value = Number(rawValue);
+
+    const gameEntry = ensureGameEntry("max_bet_CoincidingWin_ES", gameName);
+    gameEntry.jurisdictions["ES"] = { defaultBaseBet: { value } };
+    sortGamesByName(originalData["max_bet_CoincidingWin_ES"]);
+
+    return true;
 }
 
 function getBaseBetVariantsForJur(jur) {
@@ -225,7 +248,8 @@ function addGameKL() {
         });
     });
 
-    applyMinBaseBetGroups(gameName);
+    addedAnything = applyMinBaseBetGroups(gameName) || addedAnything;
+    addedAnything = applyMaxBetCoincidingWinES(gameName) || addedAnything;
 
     writeOutputAndWarnIfEmpty(addedAnything);
 }
@@ -312,6 +336,9 @@ function removeGame() {
         });
 
         removeBaseBetForJur(jur, gameName);
+        if (jur === "ES") {
+            removeTemplateJurEntry("max_bet_CoincidingWin_ES", "ES", gameName);
+        }
     });
 
     if (!removedAnything) {
@@ -321,17 +348,21 @@ function removeGame() {
     document.getElementById("output").value = JSON.stringify(originalData, null, 2);
 }
 
+function removeTemplateJurEntry(variant, jur, gameName) {
+    const variantData = originalData[variant];
+    if (!variantData || !variantData.games || !variantData.games[gameName]) return;
+
+    const jurisdictions = variantData.games[gameName].jurisdictions;
+    if (jurisdictions && jurisdictions[jur]) {
+        delete jurisdictions[jur];
+    }
+    if (jurisdictions && Object.keys(jurisdictions).length === 0) {
+        delete variantData.games[gameName];
+    }
+}
+
 function removeBaseBetForJur(jur, gameName) {
     getBaseBetVariantsForJur(jur).forEach(variant => {
-        const variantData = originalData[variant];
-        if (!variantData || !variantData.games || !variantData.games[gameName]) return;
-
-        const jurisdictions = variantData.games[gameName].jurisdictions;
-        if (jurisdictions && jurisdictions[jur]) {
-            delete jurisdictions[jur];
-        }
-        if (jurisdictions && Object.keys(jurisdictions).length === 0) {
-            delete variantData.games[gameName];
-        }
+        removeTemplateJurEntry(variant, jur, gameName);
     });
 }

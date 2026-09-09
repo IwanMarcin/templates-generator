@@ -49,11 +49,18 @@
             <div class="mb-3">
                 <label><input type="text" id="minBaseBetValue" class="form-control" placeholder="Min base bet value"></label>
             </div>
+            <div class="mb-3">
+                <input class="form-check-input" type="checkbox" id="maxBetCoincidingWinESCheckbox">
+                <label class="form-check-label ms-2" for="maxBetCoincidingWinESCheckbox">Click, if you want to add max bet CoincidingWin ES template <i>*Requires ES jurisdiction to be checked</i></label>
+            </div>
+            <div class="mb-3">
+                <label><input type="text" id="maxBetCoincidingWinESValue" class="form-control" placeholder="Max bet CoincidingWin ES value"></label>
+            </div>
         </div>
         <button class="btn btn-primary mt-3" onclick="addGameKL()">Add Game for KL</button>
         <button class="btn btn-primary mt-3" onclick="addGameFD()">Add Game for FD</button>
         <button class="btn btn-primary mt-3" onclick="addGameDR()">Add Game for DR</button>
-        <button class="btn btn-danger mt-3" onclick="removeGame()">Usuń grę</button>
+        <button class="btn btn-danger mt-3" onclick="removeGame()">Remove game</button>
         
         <h3 class="mt-4">Updated JSON output:</h3>
         <div class="mb-3">
